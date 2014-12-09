@@ -1,10 +1,12 @@
 MCMC Visualization
 -
 **Author** 
+
 Dustin Tran \<dtran@g.harvard.edu\>
+
 Ye Kuang \<yekuang@g.harvard.edu\>
 
----
+-
 ### Background ###
 This is a self research prompt project. In this project we are designing a visualizer to reveal the sampling process and empirical posterior distribution surface for the MCMC process. The MCMC sampler supports any kind of dimension of parameters (as long as you implement the proposal and posterior function correctly, of course), but for visualization, we will only display parameters in the first two dimension.
 
