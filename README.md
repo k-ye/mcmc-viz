@@ -1,8 +1,8 @@
 MCMC Visualization
 -
 **Author** 
-Dustin Tran <dtran@g.harvard.edu>
-Ye Kuang <yekuang@g.harvard.edu>
+Dustin Tran \<dtran@g.harvard.edu\>
+Ye Kuang \<yekuang@g.harvard.edu\>
 
 ---
 ### Background ###
