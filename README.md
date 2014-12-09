@@ -100,4 +100,12 @@ In the example we provided with two sample model.
 
 The first model is the mixture of three bi-variate normal distributions with their centers on the three vertices of a equilateral triangle. We are using another bi-variate normal distribution as the proposal function, whose center is also the center of that triangle.
 
+
+![](Demo/simple_1.png) 
+![](Demo/simple_2.png)
+
 The second model is more complicated. We are using a series of data that are generated from a binomial distribution (N, p), without knowing any prior of the parameters. Still, we use two uni-variate normal distribution as proposal functions. From the figure we can see that this is not an ideal proposal function, as the sampler is always trapped in certain area, with a slow speed to traverse through the entire parameter space.
+
+![](Demo/waterbuck_1.png)
+![](Demo/waterbuck_2.png)
+![](Demo/waterbuck_3.png)
