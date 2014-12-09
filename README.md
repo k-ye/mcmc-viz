@@ -60,9 +60,9 @@ class YourModelPosterior {
 	}
 };
 ```
-***Hint***: If you don't know how write out the <i>p.d.f</i> you are using elegantly, take a look at the `boost::math` and `boost::random` library. Most of the distributions have already been built up here for you! Even if you know, I mean, you don't need to reinvent the wheels :) Specifications regarding the libarries can be found [here](http://www.boost.org/doc/libs/1_57_0/libs/math/doc/html/dist.html).
+***Hint***: If you don't know how write out the <i>p.d.f</i> you are using elegantly, take a look at the `boost::math` and `boost::random` library. Most of the distributions have already been built up here for you! Specifications regarding the libarries can be found [here](http://www.boost.org/doc/libs/1_57_0/libs/math/doc/html/dist.html).
 
-Once you defined your own problem statistical model (the Posterior) and proposal function (the Proposal), you can give an estimation of your parameter set and define its range in another class. This is necessary as the visualizer needs to find a way to map the parameters back onto the displayed mesh coordination. Also, you will need to provide the initial parameter for the simulation.
+Once you define your own problem statistical model (the Posterior) and proposal function (the Proposal), you can give an estimation of your parameter set and define its range in another class. This is necessary as the visualizer needs to find a way to map the parameters back onto the displayed mesh coordination. Also, you will need to provide the initial parameter for the simulation.
 
 ```
 struct YourModelRange {
@@ -98,13 +98,13 @@ In order to make use of the problem factory, you may wrap all the classes relate
 
 In the example we provided with two sample model.
 
-The first model is the mixture of three bi-variate normal distributions with their centers on the three vertices of a equilateral triangle. We are using another bi-variate normal distribution as the proposal function, whose center is also the center of that triangle.
+The first model, 'SimpleProblem', is the mixture of three bi-variate normal distributions with their centers on the three vertices of a equilateral triangle. We are using another bi-variate normal distribution as the proposal function, whose center is also the center of that triangle.
 
 
 ![](Demo/simple_1.png) 
 ![](Demo/simple_2.png)
 
-The second model is more complicated. We are using a series of data that are generated from a binomial distribution (N, p), without knowing any prior of the parameters. Still, we use two uni-variate normal distribution as proposal functions. From the figure we can see that this is not an ideal proposal function, as the sampler is always trapped in certain area, with a slow speed to traverse through the entire parameter space.
+The second model, 'Waterbuck', is more complicated. We are using a series of data that are generated from a binomial distribution (N, p), without knowing any prior of the parameters. Still, we use two uni-variate normal distribution as proposal functions. From the figure we can see that this is not an ideal proposal function, as the sampler is always trapped in certain area, with a slow speed to traverse through the entire parameter space.
 
 ![](Demo/waterbuck_1.png)
 ![](Demo/waterbuck_2.png)
