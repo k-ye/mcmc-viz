@@ -12,22 +12,19 @@ namespace Waterbuck {
 	class WaterbuckPosterior;
 	class WaterbuckProposal;
 	struct WaterbuckRange;
+	struct WaterbuckInitialParams;
 
 	typedef WaterbuckPosterior ProblemPosterior;
 	typedef WaterbuckProposal ProblemProposal;
 	typedef WaterbuckRange ProblemRange;
+	typedef WaterbuckInitialParams ProblemInitialParams;
 
 	typedef double value_type;
 	typedef unsigned size_type;
 	typedef std::vector<value_type> param_type;
 
-	typedef boost::mt19937 ENG;
-	typedef boost::math::binomial_distribution<value_type> binomial;
-	typedef boost::math::normal_distribution<value_type> normal_dens_type;
-	typedef boost::normal_distribution<value_type> normal_rand_type;
-	typedef boost::variate_generator<ENG, normal_rand_type> RAND_GEN;
-
 	class WaterbuckPosterior {
+		typedef boost::math::binomial_distribution<value_type> binomial;
 	 public:
 		WaterbuckPosterior() : data_({53., 57., 66., 67., 72.}) {
 
@@ -49,6 +46,10 @@ namespace Waterbuck {
 	};
 
 	class WaterbuckProposal {
+		typedef boost::mt19937 ENG;
+		typedef boost::math::normal_distribution<value_type> normal_dens_type;
+		typedef boost::normal_distribution<value_type> normal_rand_type;
+		typedef boost::variate_generator<ENG, normal_rand_type> RAND_GEN;
 	 public:
 		WaterbuckProposal() : N_generator_(RAND_GEN(ENG(), normal_rand_type(0., sqrt(5.)))), theta_generator_(RAND_GEN(ENG(), normal_rand_type(0., sqrt(0.01)))) {
 	  }
@@ -84,8 +85,14 @@ namespace Waterbuck {
 	  std::pair<value_type, value_type> x;
 	  std::pair<value_type, value_type> y;
 
-	  WaterbuckRange() : x(std::make_pair(72., 200.)), y(std::make_pair(0., 1.)) {
+	  WaterbuckRange() : x(std::make_pair(70., 250.)), y(std::make_pair(0., 1.)) {
 
 	  }
+	};
+
+	struct WaterbuckInitialParams {
+		param_type initial_params() {
+			return {100., .5};
+		}
 	};
 }
