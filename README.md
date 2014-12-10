@@ -1,4 +1,4 @@
-# MCMC Visualization
+# MCMC Visualizer
 
 ### Authors
 * Dustin Tran \<dtran@g.harvard.edu\>
