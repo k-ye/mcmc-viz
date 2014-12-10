@@ -9,12 +9,12 @@
 #include <queue>
 #include <map>
 
-#include "CS207/SDLViewer.hpp"
-#include "CS207/Util.hpp"
-#include "CS207/Color.hpp"
+#include "mesh/CS207/SDLViewer.hpp"
+#include "mesh/CS207/Util.hpp"
+#include "mesh/CS207/Color.hpp"
 
-#include "Point.hpp"
-#include "Mesh.hpp"
+#include "mesh/Point.hpp"
+#include "mesh/Mesh.hpp"
 #include "SpaceSearcher.hpp"
 #include "ProblemFactory.hpp"
 
@@ -278,7 +278,7 @@ class MCMC_Simulator {
     // Initialize matrix of size max_N x size.
     std::vector<param_type>theta(max_N+1);
     theta[0] = initial_val;
-  
+
     std::default_random_engine generator;
     std::uniform_real_distribution<value_type> runif(0, 1);
 
@@ -297,7 +297,7 @@ class MCMC_Simulator {
         theta[i] = theta[i-1];
       }
       // fire the event to tell the handler that this iteration has completed
-      signals_(theta[i], i, accept_count);      
+      signals_(theta[i], i, accept_count);
     }
   }
 
@@ -326,13 +326,13 @@ struct TriangleToPoint {
 };
 
 /** Callback function for each frame, in this case each iteration in MCMC step */
-void callback_distribution(const param_type& theta, size_type N, size_type accept_count, 
+void callback_distribution(const param_type& theta, size_type N, size_type accept_count,
   MeshType& mesh, CS207::SDLViewer& viewer, NodeMapType& node_map, SpaceSearcherType& space_searcher) {
   // setup the bounding box for spacesearcher
   Point bb_center(map_x_grid_range(theta[0]), map_y_grid_range(theta[1]), 0);
   BoundingBox bb(bb_center-.05, bb_center+.05);
   update(space_searcher.begin(bb), space_searcher.end(bb), N, InTrianglePred(theta));
-  #pragma omp parallel 
+  #pragma omp parallel
   {
     post_process(mesh);
   }
@@ -354,16 +354,16 @@ void callback_distribution(const param_type& theta, size_type N, size_type accep
   } else {
     viewer.set_label("");
   }
-  
+
   CS207::sleep(sleep_interval);
 }
 
-void callback_trajectory(const param_type& theta, size_type i, size_type accept_count, 
+void callback_trajectory(const param_type& theta, size_type i, size_type accept_count,
   GraphType& graph, CS207::SDLViewer& viewer, NodeMapType& node_map) {
   //std::cout << "i: " << i << "; graph.size(): " << graph.size() << std::endl;
   (void) accept_count;
   static std::vector<param_type> trajectory_vec;
-  
+
   // Force the tie conditional to be true if it is the first sample.
   auto last_position = Point(theta[0]-1, theta[1]-1, 0);
   if (i != 1) {
@@ -376,7 +376,7 @@ void callback_trajectory(const param_type& theta, size_type i, size_type accept_
     }
     trajectory_vec.push_back(theta);
   }
-  
+
   // Update trajectory
   if (trajectory_vec.size() == 1) {
     for (size_type k = 0; k < graph.num_nodes(); ++k) {
@@ -432,9 +432,9 @@ int main() {
   // Launch the SDLViewer
   CS207::SDLViewer viewer;
   viewer.launch();
-  
+
   auto node_map = viewer.empty_node_map(mesh);
-  
+
   SpaceSearcherType space_searcher(mesh.triangle_begin(), mesh.triangle_end(), TriangleToPoint());
 
   viewer.add_nodes(mesh.node_begin(), mesh.node_end(), node_map);
@@ -444,14 +444,14 @@ int main() {
   viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
   viewer.add_keyboard_listener(boost::bind(&callback_keyboard, _1));
   viewer.center_view();
-  
+
   // initialize MCMC simulator and problem set
   MCMC_Simulator simulator;
   ProblemFactory::ProblemFactory problem_factory;
-  
-  simulator.add_mcmc_iteration_listener(boost::bind(&callback_distribution, _1, _2, _3, 
+
+  simulator.add_mcmc_iteration_listener(boost::bind(&callback_distribution, _1, _2, _3,
     boost::ref(mesh), boost::ref(viewer), boost::ref(node_map), boost::ref(space_searcher)));
-  simulator.add_mcmc_iteration_listener(boost::bind(&callback_trajectory, _1, _2, _3, 
+  simulator.add_mcmc_iteration_listener(boost::bind(&callback_trajectory, _1, _2, _3,
     boost::ref(graph), boost::ref(viewer), boost::ref(node_map)));
   // create problems definition from factory
   auto proposal = problem_factory.create_proposal();

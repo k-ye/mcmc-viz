@@ -6,7 +6,7 @@
 
 #include <cassert>
 
-#include "Point.hpp"
+#include "mesh/Point.hpp"
 #include "BoundingBox.hpp"
 #include "MortonCoder.hpp"
 

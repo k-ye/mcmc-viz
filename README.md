@@ -1,31 +1,66 @@
-MCMC Visualization
--
-**Author** 
+# MCMC Visualization
 
-Dustin Tran \<dtran@g.harvard.edu\>
+### Authors
+* Dustin Tran \<dtran@g.harvard.edu\>
+* Ye Kuang \<yekuang@g.harvard.edu\>
 
-Ye Kuang \<yekuang@g.harvard.edu\>
+## Description
+mcmc-viz is a 3D visualization tool for examining [Markov Chain Monte
+Carlo](http://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo) (MCMC) methods for
+parameter estimation of Bayesian models. It visualizes the performance of MCMC
+methods as they run in real time, and it provides insight into the geometry of
+their state space.
 
--
-### Background ###
-This is a self research prompt project. In this project we are designing a visualizer to reveal the sampling process and empirical posterior distribution surface for the MCMC process. The MCMC sampler supports any kind of dimension of parameters (as long as you implement the proposal and posterior function correctly, of course), but for visualization, we will only display parameters in the first two dimension.
+### Features
+* Visualizes the empirical posterior distribution.
+* Visualizes the trajectory of the latest 25 sampled points.
+* Supports user-defined sampling functions (proposal) and models (posterior).
+* Supports any number of parameters; for visualization, we project to the first
+  two dimensions of the parameters.
+* Keyboard shortcuts
+  * `F`: Toggle between a 3D posterior surface and a 2D heatmap
+    (contour plot).
+  * `T`: Cycle between three display options in the bottom-right corner of the
+    viewer—the number of iterations, the acceptance rate, and no display.
 
-### Features ###
-- Supports user defined sampling functions(proposal) and models(posterior). 
-- Switch between 3D posterior surface and 2D heatmap, which represents the contour by pressing `F`.
-- Switch to display either number of iterations or acceptance rate in the right-bottom lable by pressing `T`. Or you could just switch off the display.
-- Will display the latest 25 sampling point trajectory. Helps you check if your proposal has stuck in certain local region.
+## Examples
 
-### Get Started ###
-In terminal, type in `./MCMC` to see the posterior surface. Try the features mentioned above to get a basic idea of your model.
+`SimpleProblem.hpp` is a mixture of three bivariate normal distributions
+centered at the three vertices of an equilateral triangle. We apply
+[Metropolis-Hastings](http://en.wikipedia.org/wiki/Metropolis–Hastings_algorithm),
+where the proposal function is a bivariate normal distribution whose center is
+at the center of the triangle.
 
-### Plugin Your Own Model ###
-Three steps need to be done in order to use the MCMC visualizer. 
+![](img/simple_1.png)
+![](img/simple_2.png)
 
-- Define the class to propose new parameters and to calculate the posterior according to your statistical model.
-- Define the approximated range of your parameter space and the initial parameter
-- Make a small change in `ProblemFactory` namespace so that your model can be correctly linked with our simulator and visualizer.
- 
+`Waterbuck.hpp` follows Raftery (1988). It models data about waterbucks
+using the distribution `Binomial(N,p)`, where both `N` and `p` are unknown, and
+applies a noninformative prior on `(N,p)` proportional to `1/N`.
+
+In this example, we use two univariate normal distributions as the proposal and
+truncate accordingly to fix `N` as a whole number and `p` in `[0,1]`. The
+visualizer shows that this is obviously a bad idea: the sampler tends to be
+trapped in certain regions, and while it does traverse the entire parameter
+space, it finds nonexistent posterior modes peaking all across the surface.
+
+![](img/waterbuck_1.png)
+![](img/waterbuck_2.png)
+![](img/waterbuck_3.png)
+
+## Getting Started
+```
+make MCMC
+./MCMC
+```
+
+## Plug in Your Own Model
+Three steps need to be done in order to use the MCMC visualizer.
+
+* Define the class to propose new parameters and to calculate the posterior according to your statistical model.
+* Define the approximated range of your parameter space and the initial parameter
+* Make a small change in `ProblemFactory` namespace so that your model can be correctly linked with our simulator and visualizer.
+
 First of all, you will provide a proposal function and a posterior function that are specific related to your statistical model first with our pre-defined interface like this.
 ```
 typedef double value_type;
@@ -94,18 +129,8 @@ typedef YourModel::YourModelInitialParams ProblemInitialParams;
 
 In order to make use of the problem factory, you may wrap all the classes related to your model in `YourModel` namespace.
 
-### Example ###
-
-In the example we provided with two sample model.
-
-The first model, `SimpleProblem.hpp`, is the mixture of three bi-variate normal distributions with their centers on the three vertices of a equilateral triangle. We are using another bi-variate normal distribution as the proposal function, whose center is also the center of that triangle.
-
-
-![](Demo/simple_1.gif) 
-![](Demo/simple_2.gif)
-
-The second model, `Waterbuck.hpp`, is more complicated. We are using a series of data that are generated from a binomial distribution (N, p), without knowing any prior of the parameters. Still, we use two uni-variate normal distribution as proposal functions. From the figure we can see that this is not an ideal proposal function, as the sampler is always trapped in certain area, with a slow speed to traverse through the entire parameter space.
-
-![](Demo/waterbuck_1.gif)
-![](Demo/waterbuck_2.gif)
-![](Demo/waterbuck_3.gif)
+## References
+* Raftery, A. Inference for the binomial N parameter: a hierarchical Bayes
+  approach. *Biometrika 75, 223-8*. 1988.
+* Kuang, Y. and Tran, D. Mesh. GitHub repository
+  [Github:dustinvtran/mesh](https://github.com/dustinvtran/). 2014.
