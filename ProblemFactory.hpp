@@ -1,5 +1,5 @@
 #include "Waterbuck.hpp"
-//#include "SimpleProblem.hpp"
+#include "SimpleProblem.hpp"
 #include "vector"
 
 namespace ProblemFactory {
@@ -8,8 +8,7 @@ namespace ProblemFactory {
 	typedef Waterbuck::ProblemPosterior ProblemPosterior;
 	typedef Waterbuck::ProblemRange ProblemRange;
 	typedef Waterbuck::ProblemInitialParams ProblemInitialParams;
-#endif
-#if 0
+#else
 	typedef SimpleProblem::ProblemProposal ProblemProposal;
 	typedef SimpleProblem::ProblemPosterior ProblemPosterior;
 	typedef SimpleProblem::ProblemRange ProblemRange;
