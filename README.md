@@ -5,7 +5,7 @@
 * Ye Kuang \<yekuang@g.harvard.edu\>
 
 ## Description
-mcmc-viz is a 3D visualization tool for examining [Markov Chain Monte
+mcmc-viz is a 3D visualization tool for examining [Markov chain Monte
 Carlo](http://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo) (MCMC) methods for
 parameter estimation of Bayesian models. It visualizes the performance of MCMC
 methods as they run in real time, and it provides insight into the geometry of
@@ -25,6 +25,7 @@ their state space.
 
 ## Examples
 
+### Mixture model of normals
 `SimpleProblem.hpp` is a mixture of three bivariate normal distributions
 centered at the three vertices of an equilateral triangle. We apply
 [Metropolis-Hastings](http://en.wikipedia.org/wiki/Metropolis–Hastings_algorithm),
@@ -34,6 +35,7 @@ at the center of the triangle.
 ![](img/simple_1.gif)
 ![](img/simple_2.gif)
 
+### Hierarchical model for binomial
 `Waterbuck.hpp` follows Raftery (1988). It models data about waterbucks
 using the distribution `Binomial(N,p)`, where both `N` and `p` are unknown, and
 applies a noninformative prior on `(N,p)` proportional to `1/N`.
