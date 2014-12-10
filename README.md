@@ -26,28 +26,27 @@ their state space.
 ## Examples
 
 ### Mixture model of normals
-`SimpleProblem.hpp` is a mixture of three bivariate normal distributions
-centered at the three vertices of an equilateral triangle. We apply
+`SimpleProblem.hpp` is a mixture of three normal distributions centered at the
+three vertices of an equilateral triangle. We apply
 [Metropolis-Hastings](http://en.wikipedia.org/wiki/Metropolis–Hastings_algorithm),
-where the proposal function is a bivariate normal distribution whose center is
-at the center of the triangle.
+where the proposal function is another normal distribution whose center is at
+the center of the triangle.
 
 ![](img/simple_1.gif)
 ![](img/simple_2.gif)
 
 ### Hierarchical model for binomial
-`Waterbuck.hpp` follows Raftery (1988). It models data about waterbucks
-using the distribution `Binomial(N,p)`, where both `N` and `p` are unknown, and
+`Waterbuck.hpp` follows Raftery (1988). It models data about waterbucks using
+the distribution `Binomial(N,p)`, where both `N` and `p` are unknown, and
 applies a noninformative prior on `(N,p)` proportional to `1/N`.
 
-In this example, we use two univariate normal distributions as the proposal and
-truncate accordingly to fix `N` as a whole number and `p` in `[0,1]`. The
-visualizer shows that this is obviously a bad idea: the sampler tends to be
-trapped in certain regions, and while it does traverse the entire parameter
-space, it finds nonexistent posterior modes peaking all across the surface.
+In this example, we use two independent normal distributions as the proposal and
+truncate to fix `N` as a whole number and `p` in `[0,1]`. The visualizer shows
+that this is obviously a bad idea: the sampler tends to be trapped in certain
+regions, and while it does traverse the entire parameter space, it finds
+nonexistent posterior modes peaking all across the surface.
 
 ![](img/waterbuck_1.gif)
-![](img/waterbuck_2.gif)
 ![](img/waterbuck_3.gif)
 
 ## Getting Started
