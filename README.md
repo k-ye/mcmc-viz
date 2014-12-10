@@ -133,4 +133,4 @@ In order to make use of the problem factory, you may wrap all the classes relate
 * Raftery, A. Inference for the binomial N parameter: a hierarchical Bayes
   approach. *Biometrika 75, 223-8*. 1988.
 * Kuang, Y. and Tran, D. Mesh. GitHub repository
-  [Github:dustinvtran/mesh](https://github.com/dustinvtran/). 2014.
+  [Github:dustinvtran/mesh](https://github.com/dustinvtran/mesh). 2014.
