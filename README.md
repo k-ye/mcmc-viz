@@ -31,8 +31,8 @@ centered at the three vertices of an equilateral triangle. We apply
 where the proposal function is a bivariate normal distribution whose center is
 at the center of the triangle.
 
-![](img/simple_1.png)
-![](img/simple_2.png)
+![](img/simple_1.gif)
+![](img/simple_2.gif)
 
 `Waterbuck.hpp` follows Raftery (1988). It models data about waterbucks
 using the distribution `Binomial(N,p)`, where both `N` and `p` are unknown, and
@@ -44,9 +44,9 @@ visualizer shows that this is obviously a bad idea: the sampler tends to be
 trapped in certain regions, and while it does traverse the entire parameter
 space, it finds nonexistent posterior modes peaking all across the surface.
 
-![](img/waterbuck_1.png)
-![](img/waterbuck_2.png)
-![](img/waterbuck_3.png)
+![](img/waterbuck_1.gif)
+![](img/waterbuck_2.gif)
+![](img/waterbuck_3.gif)
 
 ## Getting Started
 ```
