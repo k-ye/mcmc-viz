@@ -12,8 +12,8 @@
 #include "mesh/CS207/SDLViewer.hpp"
 #include "mesh/CS207/Util.hpp"
 #include "mesh/CS207/Color.hpp"
-#include "mesh/CS207/Point.hpp"
 
+#include "mesh/CS207/Point.hpp"
 #include "mesh/Mesh.hpp"
 #include "SpaceSearcher.hpp"
 #include "ProblemFactory.hpp"
@@ -46,6 +46,10 @@ struct TriangleToPoint;
 typedef ProblemFactory::size_type size_type;
 typedef ProblemFactory::value_type value_type;
 typedef ProblemFactory::param_type param_type;
+typedef ProblemFactory::ProblemProposal ProblemProposal;
+typedef ProblemFactory::ProblemPosterior ProblemPosterior;
+typedef ProblemFactory::ProblemRange ProblemRange;
+typedef ProblemFactory::ProblemInitialParams ProblemInitialParams;
 typedef std::pair<value_type, value_type> interval;
 
 typedef Mesh<value_type, bool, value_type> MeshType;
@@ -56,8 +60,7 @@ typedef std::map<Node, size_type> NodeMapType;
 // Define spatial searcher type
 typedef SpaceSearcher<Triangle, TriangleToPoint> SpaceSearcherType;
 
-typedef boost::function<void (const param_type&, size_type, size_type)> MCMC_Iteration_Event;
-// define constant of PI from Boost
+typedef boost::function<void (const std::vector<param_type>&, size_type, size_type)> MCMC_Iteration_Event;
 
 value_type sleep_interval = 0.01;
 value_type sleep_step = .002;
@@ -272,32 +275,58 @@ class MCMC_Simulator {
     * @param[in,out] mesh
     * @param[in,out] viewer
     */
-  template <typename PROPOSAL, typename POSTERIOR>
-  void simulate(PROPOSAL& proposal, const POSTERIOR& posterior,
-    const vector<value_type> initial_val, size_type max_N, size_type size) {
-    // Initialize matrix of size max_N x size.
-    std::vector<param_type>theta(max_N+1);
-    theta[0] = initial_val;
+  //template <typename PROPOSAL, typename POSTERIOR>
+  //void simulate(PROPOSAL& proposal, const POSTERIOR& posterior,
+  void simulate(const ProblemFactory::ProblemFactory& problem_factory, size_type max_N, size_type p) {
+    size_type num_threads = omp_get_max_threads();
+    // Initialize matrix of size max_N x p.
+    std::vector<param_type>theta((max_N+1)*num_threads);
+    // create problem definition from problem factory
+    ProblemProposal proposal = problem_factory.create_proposal();
+    ProblemPosterior posterior = problem_factory.create_posterior();
+    auto initial_val = problem_factory.create_initial_params();
+    assert(initial_val.size() >= num_threads);
+    
+    for (size_type i = 0; i < num_threads; ++i) {
+      theta[i*max_N] = initial_val[i];
+      //proposal[i] = problem_factory.create_proposal();
+      //posterior[i] = problem_factory.create_posterior();
+    }
 
     std::default_random_engine generator;
     std::uniform_real_distribution<value_type> runif(0, 1);
 
     size_type accept_count = 0;
+    
+    // this is necessary because in parallel, we canot access directly to accept_count
     for (size_type i = 1; i <= max_N; ++i) {
-      // theta[i-1] is the previous state, theta_star is the new(proposed) state
-      param_type theta_star = proposal.rand(theta[i-1], size);
-      // calculate the acceptance ratio
-      value_type accept_ratio = posterior(theta_star, true) - posterior(theta[i-1], true) + proposal.dens(theta[i-1], theta_star, true) - proposal.dens(theta_star, theta[i-1], true);
-      accept_ratio = std::min(1., exp(accept_ratio));
-      // decide to accept or reject proposed sample point
-      if (runif(generator) < accept_ratio) {
-        theta[i] = theta_star;
-        ++accept_count;
-      } else {
-        theta[i] = theta[i-1];
+      std::vector<size_type> accept_bit(num_threads, 0);
+      std::vector<param_type> proposed_theta(num_threads);
+      #pragma omp parallel 
+      {
+        size_type omp_id = omp_get_thread_num();
+        size_type j = omp_id * max_N + i;
+        // theta[i-1] is the previous state, theta_star is the new(proposed) state
+        param_type theta_star = proposal.rand(theta[j-1], p);
+        // calculate the acceptance ratio
+        value_type accept_ratio = posterior(theta_star, true) - posterior(theta[j-1], true)
+                                + proposal.dens(theta[j-1], theta_star, true) - proposal.dens(theta_star, theta[j-1], true);
+        accept_ratio = std::min(1., exp(accept_ratio));
+        //std::cout << accept_ratio << std::endl;
+        // decide to accept or reject proposed sample point
+        if (runif(generator) < accept_ratio) {
+          theta[j] = theta_star;
+          accept_bit[omp_id] = 1;
+        }
+        else {
+          theta[j] = theta[j-1];
+          accept_bit[omp_id] = 0;
+        }
+        proposed_theta[omp_id] = theta[j];
       }
+      for (auto bit : accept_bit) accept_count += bit;
       // fire the event to tell the handler that this iteration has completed
-      signals_(theta[i], i, accept_count);
+      signals_(proposed_theta, i, accept_count);      
     }
   }
 
@@ -310,7 +339,7 @@ class MCMC_Simulator {
 private:
   /** Event listener containers
    */
-  boost::signals2::signal<void (const param_type&, size_type, size_type)> signals_;
+  boost::signals2::signal<void (const std::vector<param_type>&, size_type, size_type)> signals_;
 };
 
 struct TriangleToPoint {
@@ -325,14 +354,15 @@ struct TriangleToPoint {
   }
 };
 
+#if 0
 /** Callback function for each frame, in this case each iteration in MCMC step */
-void callback_distribution(const param_type& theta, size_type N, size_type accept_count,
+void callback_distribution(const param_type& theta, size_type N, size_type accept_count, 
   MeshType& mesh, CS207::SDLViewer& viewer, NodeMapType& node_map, SpaceSearcherType& space_searcher) {
   // setup the bounding box for spacesearcher
   Point bb_center(map_x_grid_range(theta[0]), map_y_grid_range(theta[1]), 0);
   BoundingBox bb(bb_center-.05, bb_center+.05);
   update(space_searcher.begin(bb), space_searcher.end(bb), N, InTrianglePred(theta));
-  #pragma omp parallel
+  #pragma omp parallel 
   {
     post_process(mesh);
   }
@@ -354,16 +384,52 @@ void callback_distribution(const param_type& theta, size_type N, size_type accep
   } else {
     viewer.set_label("");
   }
-
+  
   CS207::sleep(sleep_interval);
 }
+#else
+void callback_distribution(const std::vector<param_type>& theta, size_type N, size_type accept_count, 
+  MeshType& mesh, CS207::SDLViewer& viewer, NodeMapType& node_map, SpaceSearcherType& space_searcher) {
+  // setup the bounding box for spacesearcher
+  for (size_type i = 0; i < theta.size(); ++i) {
+    Point bb_center(map_x_grid_range(theta[i][0]), map_y_grid_range(theta[i][1]), 0);
+    BoundingBox bb(bb_center-.05, bb_center+.05);
+    update(space_searcher.begin(bb), space_searcher.end(bb), 4*N+i, InTrianglePred(theta[i]));
+  }
+  #pragma omp parallel 
+  {
+    post_process(mesh);
+  }
 
-void callback_trajectory(const param_type& theta, size_type i, size_type accept_count,
+  auto max_node_it = std::max_element(mesh.node_begin(), mesh.node_end(), NodeValueLessComparator());
+  double max_val = (*max_node_it).value();
+
+  if (show_zaxis) {
+    viewer.add_nodes(mesh.node_begin(), mesh.node_end(),HeatmapColor(max_val), node_map);
+  } else {
+    viewer.add_nodes(mesh.node_begin(), mesh.node_end(),
+                   HeatmapColor(max_val), NodePosition(max_val), node_map);
+  }
+
+  if (show_label_state == 1) {
+    viewer.set_label(N);
+  } else if (show_label_state == 2) {
+    viewer.set_label(accept_count / (value_type)(4*N) * 100.0);
+  } else {
+    viewer.set_label("");
+  }
+  
+  CS207::sleep(sleep_interval);
+}
+#endif
+
+/*
+void callback_trajectory(const std::vector<param_type>& theta, size_type i, size_type accept_count, 
   GraphType& graph, CS207::SDLViewer& viewer, NodeMapType& node_map) {
   //std::cout << "i: " << i << "; graph.size(): " << graph.size() << std::endl;
   (void) accept_count;
   static std::vector<param_type> trajectory_vec;
-
+  
   // Force the tie conditional to be true if it is the first sample.
   auto last_position = Point(theta[0]-1, theta[1]-1, 0);
   if (i != 1) {
@@ -376,7 +442,7 @@ void callback_trajectory(const param_type& theta, size_type i, size_type accept_
     }
     trajectory_vec.push_back(theta);
   }
-
+  
   // Update trajectory
   if (trajectory_vec.size() == 1) {
     for (size_type k = 0; k < graph.num_nodes(); ++k) {
@@ -392,6 +458,7 @@ void callback_trajectory(const param_type& theta, size_type i, size_type accept_
 
   viewer.add_nodes(graph.node_begin(), graph.node_end(), TrajectoryColor(), node_map);
 }
+*/
 
 /** Callback function to handle keyboard events */
 void callback_keyboard(SDLKey key) {
@@ -432,9 +499,9 @@ int main() {
   // Launch the SDLViewer
   CS207::SDLViewer viewer;
   viewer.launch();
-
+  
   auto node_map = viewer.empty_node_map(mesh);
-
+  
   SpaceSearcherType space_searcher(mesh.triangle_begin(), mesh.triangle_end(), TriangleToPoint());
 
   viewer.add_nodes(mesh.node_begin(), mesh.node_end(), node_map);
@@ -444,21 +511,23 @@ int main() {
   viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
   viewer.add_keyboard_listener(boost::bind(&callback_keyboard, _1));
   viewer.center_view();
-
+  
   // initialize MCMC simulator and problem set
   MCMC_Simulator simulator;
   ProblemFactory::ProblemFactory problem_factory;
-
-  simulator.add_mcmc_iteration_listener(boost::bind(&callback_distribution, _1, _2, _3,
+  
+  simulator.add_mcmc_iteration_listener(boost::bind(&callback_distribution, _1, _2, _3, 
     boost::ref(mesh), boost::ref(viewer), boost::ref(node_map), boost::ref(space_searcher)));
-  simulator.add_mcmc_iteration_listener(boost::bind(&callback_trajectory, _1, _2, _3,
-    boost::ref(graph), boost::ref(viewer), boost::ref(node_map)));
+  /*simulator.add_mcmc_iteration_listener(boost::bind(&callback_trajectory, _1, _2, _3, 
+    boost::ref(graph), boost::ref(viewer), boost::ref(node_map)));*/
   // create problems definition from factory
-  auto proposal = problem_factory.create_proposal();
-  auto posterior = problem_factory.create_posterior();
-  auto initial_params = problem_factory.create_initial_params();
+  
+  //auto proposal = problem_factory.create_proposal();
+  //auto posterior = problem_factory.create_posterior();
+  //auto initial_params = problem_factory.create_initial_params();
   auto data_range = problem_factory.create_range();
   set_range(data_range);
   // run the simulation
-  simulator.simulate(proposal, posterior, initial_params, 5e5, 2);
+  //simulator.simulate(proposal, posterior, initial_params, 5e5, 2);
+  simulator.simulate(problem_factory, 1e5, 2);
 }

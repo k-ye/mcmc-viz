@@ -52,9 +52,16 @@ namespace Waterbuck {
 		typedef boost::variate_generator<ENG, normal_rand_type> RAND_GEN;
 	 public:
 		WaterbuckProposal() : N_generator_(RAND_GEN(ENG(), normal_rand_type(0., sqrt(5.)))), theta_generator_(RAND_GEN(ENG(), normal_rand_type(0., sqrt(0.01)))) {
+	  
 	  }
+	  //WaterbuckProposal() {
 
-	  param_type rand(const param_type& theta, size_type) {
+	  //}
+
+	  param_type rand(const param_type theta, size_type) {
+	  	//auto N_generator = RAND_GEN(ENG(), normal_rand_type(0., sqrt(5.)));
+	  	//auto theta_generator = RAND_GEN(ENG(), normal_rand_type(0., sqrt(0.01)));
+
 	    auto theta_sample = std::max(std::min(theta[1] + theta_generator_(), 1.), 0.);
 	    auto N_sample = std::max(std::round(theta[0] + N_generator_()), 72.);
 	    return {N_sample, theta_sample};
@@ -91,8 +98,8 @@ namespace Waterbuck {
 	};
 
 	struct WaterbuckInitialParams {
-		param_type initial_params() {
-			return {100., .5};
+		std::vector<param_type> initial_params() {
+			return {{100., .5}, {150., .4}, {200., .3}, {250., .15}};
 		}
 	};
 }

@@ -1,5 +1,5 @@
 #include "Waterbuck.hpp"
-#include "SimpleProblem.hpp"
+//#include "SimpleProblem.hpp"
 #include "vector"
 
 namespace ProblemFactory {
@@ -8,7 +8,8 @@ namespace ProblemFactory {
 	typedef Waterbuck::ProblemPosterior ProblemPosterior;
 	typedef Waterbuck::ProblemRange ProblemRange;
 	typedef Waterbuck::ProblemInitialParams ProblemInitialParams;
-#else
+#endif
+#if 0
 	typedef SimpleProblem::ProblemProposal ProblemProposal;
 	typedef SimpleProblem::ProblemPosterior ProblemPosterior;
 	typedef SimpleProblem::ProblemRange ProblemRange;
@@ -19,19 +20,19 @@ namespace ProblemFactory {
 	typedef std::vector<value_type> param_type;
 
 	struct ProblemFactory {
-		ProblemProposal create_proposal() {
+		ProblemProposal create_proposal() const {
 			return {};
 		}
 
-		ProblemPosterior create_posterior() {
+		ProblemPosterior create_posterior() const {
 			return {};
 		}
 
-		ProblemRange create_range() {
+		ProblemRange create_range() const {
 			return {};
 		}
 
-		param_type create_initial_params() {
+		std::vector<param_type> create_initial_params() const {
 			auto initial_params_object = ProblemInitialParams();
 			return initial_params_object.initial_params();
 		}
