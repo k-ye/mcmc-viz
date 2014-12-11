@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "mesh/Point.hpp"
+#include "mesh/CS207/Point.hpp"
 
 /** @class BoundingBox
  * @brief Class representing 3D bounding boxes.

@@ -12,8 +12,8 @@
 #include "mesh/CS207/SDLViewer.hpp"
 #include "mesh/CS207/Util.hpp"
 #include "mesh/CS207/Color.hpp"
+#include "mesh/CS207/Point.hpp"
 
-#include "mesh/Point.hpp"
 #include "mesh/Mesh.hpp"
 #include "SpaceSearcher.hpp"
 #include "ProblemFactory.hpp"
