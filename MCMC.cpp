@@ -97,6 +97,7 @@ public:
     *           !has_edge(@result.node(0), @result.node(1)) if i == 0;
     *           has_edge(@result.node(i), @result.node(i+1)) else
     */
+    
   GraphType operator()(size_type length) {
     GraphType graph;
     size_type num_threads = omp_get_max_threads();
