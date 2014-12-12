@@ -15,24 +15,20 @@
 
 #include "mesh/CS207/Point.hpp"
 #include "mesh/Mesh.hpp"
+#include "Grid.hpp"
 #include "SpaceSearcher.hpp"
-#include "ProblemFactory.hpp"
+#include "MCMC_Simulator.hpp"
 
-#include <boost/math/constants/constants.hpp>
-#include <boost/signals2/signal.hpp>
 #include <boost/bind/bind.hpp>
-#include <boost/function.hpp>
 #include <boost/ref.hpp>
+#include <boost/signals2/signal.hpp>
+#include <boost/function.hpp>
 
 #include <SDL/SDL.h>
 #include <omp.h>
 
 using namespace std;
 using namespace boost::math;
-
-// TODO: save demos, gif, youtube
-// TODO: parallel the process of update() using the index of each triangle
-// TODO: 
 
 #define GRID_WIDTH 2.5
 #define GRID_HEIGHT 2.5
@@ -60,23 +56,23 @@ typedef std::map<Node, size_type> NodeMapType;
 // Define spatial searcher type
 typedef SpaceSearcher<Triangle, TriangleToPoint> SpaceSearcherType;
 // EventHandler type for MCMC iteration event.
-typedef boost::function<void (const std::vector<param_type>&, size_type, size_type)> MCMC_Iteration_Event;
+typedef MCMC_Simulator::MCMC_Iteration_Event MCMC_Iteration_Event;
 
-// controls the sleeping time between each MCMC Iteration
+// Controls the sleeping time between each MCMC Iteration
 value_type sleep_interval = 0.01;
-// controls the step to increase/decrease @a sleep_interval
+// Controls the step to increase/decrease @a sleep_interval
 value_type sleep_step = .002;
-// indicator to determine what to be shown in the label
+// Indicator to determine what to be shown in the label
 size_type show_label_state = 1;
-// indicator to determine if showing 3D surface/ 2D heatmap
+// Indicator to determine if showing 3D surface/ 2D heatmap
 bool show_zaxis = false;
-// slope for range mapping between actual param and Mesh coordinate on X axis
+// Llope for range mapping between actual param and Mesh coordinate on X axis
 value_type range_x_slope = 0;
-// intercept for range mapping between actual param and Mesh coordinate on X axis
+// Intercept for range mapping between actual param and Mesh coordinate on X axis
 value_type range_x_int = 0;
-// slope for range mapping between actual param and Mesh coordinate on Y axis
+// Slope for range mapping between actual param and Mesh coordinate on Y axis
 value_type range_y_slope = 0;
-// intercept for range mapping between actual param and Mesh coordinate on Y axis
+// Intercept for range mapping between actual param and Mesh coordinate on Y axis
 value_type range_y_int = 0;
 
 /** Set up the mapping relationship between actual params and mesh coordinate.
@@ -92,56 +88,22 @@ void set_range(const RANGE& range) {
   range_y_int = -range.y.first*range_y_slope;
 }
 
-/* Class to initialize a square mesh */
-class Grid {
-public:
-  /** Returns a grid of the interval separated by the number of points.
-    * @param[in] x [low, high] domain of x
-    * @param[in] y [low, high] domain of y
-    * @param[in] n_x number of linearly spaced points in interval x
-    * @param[in] n_y number of linearly space points in interval y
-    * @return Mesh which connects all the points in the grid.
-    *
-    * Complexity: O(n_x*n_y).
-    */
-  MeshType operator()(interval x, interval y, size_type n_x, size_type n_y) {
-    MeshType mesh;
-    value_type x_step = (x.second - x.first) / (n_x - 1);
-    value_type y_step = (y.second - y.first) / (n_y - 1);
-
-    for (size_type j = n_y; j > 0; --j) {
-      for (size_type i = 1; i <= n_x; ++i) {
-        mesh.add_node(Point((i-1)*x_step, (j-1)*y_step, 0));
-        MeshType::size_type idx = mesh.num_nodes() - 1;
-        if (j != n_y) {
-          if (i == 1) {
-            mesh.add_triangle(mesh.node(idx), mesh.node(idx - n_x), mesh.node(idx - n_x + 1));
-          } else if (i == n_x) {
-            mesh.add_triangle(mesh.node(idx), mesh.node(idx - 1), mesh.node(idx - n_x));
-          } else {
-            mesh.add_triangle(mesh.node(idx), mesh.node(idx - 1), mesh.node(idx - n_x));
-            mesh.add_triangle(mesh.node(idx), mesh.node(idx - n_x), mesh.node(idx - n_x + 1));
-          }
-        }
-      }
-    }
-    return mesh;
-  }
-};
-
 /* Class to initialize trajectory for sampled points. */
 class Trajectory {
 public:
-  /*
-   * @param[in] length: length of the trajectory
-   */
+  /** Returns a Graph, whose nodes and edges will represent the trajectory on sampling path.
+    * @param[in] length: length of the trajectory
+    * @result: For 0 <= i < length, 
+    *           !has_edge(@result.node(0), @result.node(1)) if i == 0;
+    *           has_edge(@result.node(i), @result.node(i+1)) else
+    */
   GraphType operator()(size_type length) {
     GraphType graph;
     size_type num_threads = omp_get_max_threads();
 
     for (size_type i = 0; i < num_threads; ++i) {
       for (size_type j = 0; j < length; ++j) {
-        graph.add_node(Point((value_type)j / 5., (value_type)i / 2., 1.2));
+        graph.add_node(0., 0., 1.2));
         if (j > 0) {
           graph.add_edge(graph.node(graph.size()-1), graph.node(graph.size()-2));
         }
@@ -152,12 +114,12 @@ public:
   }
 };
 
-/** Calculate mapped value from true params to Mesh X-cooridnate */
+/* Calculate mapped value from true params to Mesh X-cooridnate */
 value_type map_x_grid_range(value_type x) {
   return range_x_slope * x + range_x_int;
 }
 
-/** Calculate mapped value from true params to Mesh Y-cooridnate */
+/* Calculate mapped value from true params to Mesh Y-cooridnate */
 value_type map_y_grid_range(value_type y) {
   return range_y_slope * y + range_y_int;
 }
@@ -205,9 +167,12 @@ struct NodeValueLessComparator {
   }
 };
 
-/** Node position function object for use in the SDLViewer. */
+/* Functor to display the Node according to its value. */
 struct NodePosition {
   template <typename NODE>
+  /**
+   * @pre: @a n.value() < @a max_
+   */
   Point operator()(const NODE& n) {
     double z = n.value() / max_;
     return {n.position().x, n.position().y, z};
@@ -216,11 +181,13 @@ struct NodePosition {
   NodePosition(double max) : max_(max) { }
 
  private:
+  // maximum value of all nodes
   double max_;
 };
 
 /* A default color functor that returns colors according to the frequency. */
 struct HeatmapColor {
+  /* @pre: @a n.value() < @a max_ */
   template <typename NODE>
   CS207::Color operator()(const NODE& n) {
     double val = 0.0;
@@ -237,9 +204,7 @@ private:
   double max_;
 };
 
-/** Default color functor to return colors according to how recent the point is
-  * in the trajectory.
-  */
+/* Default color functor to return colors according to how recent the point is in the trajectory. */
 struct TrajectoryColor {
   template <typename NODE>
   CS207::Color operator()(const NODE& n) {
@@ -258,7 +223,12 @@ struct TrajectoryColor {
   }
 };
 
-/* Update the empirical probabilities at each triangle. */
+/** Update the empirical probabilities at each triangle. 
+  * @post: For @a begin <= it < @a end:
+  *         @new (*it).value() == @old (*it).value + 1, if @a pred((*it))
+  *         @new (*it).value() == @old (*it).value, else
+  * Time Complexity: less than O(n), depending on the Morton Code
+  */
 template <typename ITER, typename PRED>
 void update(ITER begin, ITER end, size_type N, PRED pred) {
   (void) N;
@@ -269,18 +239,13 @@ void update(ITER begin, ITER end, size_type N, PRED pred) {
   }
 }
 
-/** Update the empirical probabilities at each triangle.
-  *  Deprecated as now we are utilizing SpaceSearcher.
+/** Iterate throught @a mesh and calculate each node.value() by averaring all its adjacent triangels.
+  * This function is used for parallel. 
+  * 
+  * Time Complexity: O(@a mesh.num_nodes())
   */
-template <typename PRED>
-void update(MeshType& mesh, size_type N, PRED pred) {
-  update(mesh.triangle_begin(), mesh.triangle_end(), N, pred);
-}
-
-/* Function to apply to mesh after each iteration. */
 void post_process(MeshType& mesh) {
-  /** Set each node's value to be the average of its adjacent triangles' empirical
-    * probabilities. */
+  /* Set each node's value to be the average of its adjacent triangles' empirical probabilities. */
   size_type thread_id = omp_get_thread_num();
   size_type thread_num = omp_get_num_threads();
 
@@ -301,78 +266,6 @@ void post_process(MeshType& mesh) {
   }
 }
 
-
-class MCMC_Simulator {
- public:
-  // TODO: find some way to do lexical scoping
-  /** Animates frames which represent each iteration of the sampling procedure.
-    * @param[in] proposal
-    * @param[in] max_N
-    * @param[in] data
-    * @param[in,out] mesh
-    * @param[in,out] viewer
-    */
-  void simulate(const ProblemFactory::ProblemFactory& problem_factory, size_type max_N, size_type p) {
-    size_type num_threads = omp_get_max_threads();
-    // Initialize matrix of size max_N x p.
-    std::vector<param_type>theta((max_N+1)*num_threads);
-    // create problem definition from problem factory
-    ProblemProposal proposal = problem_factory.create_proposal();
-    ProblemPosterior posterior = problem_factory.create_posterior();
-    auto initial_val = problem_factory.create_initial_params();
-    assert(initial_val.size() >= num_threads);
-    
-    for (size_type i = 0; i < num_threads; ++i) {
-      theta[i*max_N] = initial_val[i];
-    }
-
-    std::default_random_engine generator;
-    std::uniform_real_distribution<value_type> runif(0, 1);
-
-    size_type accept_count = 0;
-    
-    // this is necessary because in parallel, we canot access directly to accept_count
-    for (size_type i = 1; i <= max_N; ++i) {
-      std::vector<size_type> accept_bit(num_threads, 0);
-      std::vector<param_type> proposed_theta(num_threads);
-      #pragma omp parallel 
-      {
-        size_type omp_id = omp_get_thread_num();
-        size_type j = omp_id * max_N + i;
-        // theta[i-1] is the previous state, theta_star is the new(proposed) state
-        param_type theta_star = proposal.rand(theta[j-1], p);
-        // calculate the acceptance ratio
-        value_type accept_ratio = posterior(theta_star, true) - posterior(theta[j-1], true)
-                                + proposal.dens(theta[j-1], theta_star, true) - proposal.dens(theta_star, theta[j-1], true);
-        accept_ratio = std::min(1., exp(accept_ratio));
-        //std::cout << accept_ratio << std::endl;
-        // decide to accept or reject proposed sample point
-        if (runif(generator) < accept_ratio) {
-          theta[j] = theta_star;
-          accept_bit[omp_id] = 1;
-        }
-        else {
-          theta[j] = theta[j-1];
-          accept_bit[omp_id] = 0;
-        }
-        proposed_theta[omp_id] = theta[j];
-      }
-      for (auto bit : accept_bit) accept_count += bit;
-      // fire the event to tell the handler that this iteration has completed
-      signals_(proposed_theta, i, accept_count);      
-    }
-  }
-
-  /* Connect an event listener to the MCMC_Iteration event. */
-  void add_mcmc_iteration_listener(const MCMC_Iteration_Event& func) {
-    signals_.connect(func);
-  }
-
-private:
-  /* Event listener containers */
-  boost::signals2::signal<void (const std::vector<param_type>&, size_type, size_type)> signals_;
-};
-
 /* Functor to map a triangle to a point for Morton Code. */
 struct TriangleToPoint {
   template <typename TRIANGLE>
@@ -386,7 +279,17 @@ struct TriangleToPoint {
   }
 };
 
-/* Event handler of Mesh distribution display for MCMC_Iteration_Event */
+/** Event handler of Mesh distribution display for MCMC_Iteration_Event. It will update each
+  * triangle's and node's value using Morton Coder, then update the render of the view.
+  * 
+  * @pre: theta.size() == num_threads
+  * @post: Show 3D distribution surfase if @a show_zaxis, else show 2D heatmap.
+  * @post: Show number of iteration, if @a show_label_state == 1,
+  *        else show acceptance ratio, if @a show_label_state == 2,
+  *        else shut off display.
+  *
+  * Time Complexity: O(@a mesh.num_nodes())
+  */
 void callback_distribution(const std::vector<param_type>& theta, size_type N, size_type accept_count, 
   MeshType& mesh, CS207::SDLViewer& viewer, NodeMapType& node_map, SpaceSearcherType& space_searcher) {
   // setup the bounding box for spacesearcher
@@ -399,10 +302,10 @@ void callback_distribution(const std::vector<param_type>& theta, size_type N, si
   {
     post_process(mesh);
   }
-
+  // Find the maximum value among the nodes
   auto max_node_it = std::max_element(mesh.node_begin(), mesh.node_end(), NodeValueLessComparator());
   double max_val = (*max_node_it).value();
-
+  // Update visual display according to different state parameters.
   if (show_zaxis) {
     viewer.add_nodes(mesh.node_begin(), mesh.node_end(),HeatmapColor(max_val), node_map);
   } else {
@@ -421,8 +324,16 @@ void callback_distribution(const std::vector<param_type>& theta, size_type N, si
   CS207::sleep(sleep_interval);
 }
 
-/* Event handler of Graph trajectory display for MCMC_Iteration_Event */
-void callback_trajectory(const std::vector<param_type>& theta, size_type i, size_type accept_count, 
+/** Event handler of Graph trajectory display for MCMC_Iteration_Event. Update each trajectory
+  * to be the lastes @a TRAJECTORY_LENGTH sampling points.
+  * 
+  * @pre: theta.size() == num_threads
+  * @post: For 0 <= i < TRAJECTORY_LENGTH - 1: @new graph.node(i).position() == @old graph.node(i+1).position()
+  * @post: @new graph.node(TRAJECTORY_LENGTH-1).position() == @a theta. This is true for all num_threads trajectories.
+  *
+  * Time complexity: O(1), because the length of trajectory is fixed
+  */
+void callback_trajectory(const std::vector<param_type>& theta, size_type N, size_type accept_count, 
   GraphType& graph, CS207::SDLViewer& viewer, NodeMapType& node_map) {
   (void) accept_count;
   
@@ -433,13 +344,13 @@ void callback_trajectory(const std::vector<param_type>& theta, size_type i, size
   #pragma omp parallel 
   {
     size_type omp_id = omp_get_thread_num();
-  //for (size_type omp_id = 0; omp_id != num_threads; ++omp_id) {
+    //for (size_type omp_id = 0; omp_id != num_threads; ++omp_id) {
     param_type theta_omp_id = theta[omp_id];
     std::vector<param_type>& trajectory_vec = trajectory_vec_list[omp_id];
     
     // Force the tie conditional to be true if it is the first sample.
     auto last_position = Point(theta_omp_id[0]-1, theta_omp_id[1]-1, 0);
-    if (i != 1) {
+    if (N != 1) {
       last_position = Point(trajectory_vec.back()[0], trajectory_vec.back()[1], 0);
     }
     // Check tie condition; if it is true, new point was accepted and thus be added, 
@@ -510,29 +421,30 @@ int main() {
   auto node_map = viewer.empty_node_map(mesh);
   
   SpaceSearcherType space_searcher(mesh.triangle_begin(), mesh.triangle_end(), TriangleToPoint());
-
+  // add distribution mesh
   viewer.add_nodes(mesh.node_begin(), mesh.node_end(), node_map);
   viewer.add_edges(mesh.edge_begin(), mesh.edge_end(), node_map);
-
+  // add trajectory graph
   viewer.add_nodes(graph.node_begin(), graph.node_end(), node_map);
   viewer.add_edges(graph.edge_begin(), graph.edge_end(), node_map);
+  // add keyboard event listenere
   viewer.add_keyboard_listener(boost::bind(&callback_keyboard, _1));
   viewer.center_view();
   
   // Initialize MCMC simulator and problem set.
   MCMC_Simulator simulator;
+  // Create problem factory
   ProblemFactory::ProblemFactory problem_factory;
   
+  // register distribution visualization event hanlder
   simulator.add_mcmc_iteration_listener(boost::bind(&callback_distribution, _1, _2, _3, 
     boost::ref(mesh), boost::ref(viewer), boost::ref(node_map), boost::ref(space_searcher)));
-  #if 1
+  // register trajectory visualization event hanlder
   simulator.add_mcmc_iteration_listener(boost::bind(&callback_trajectory, _1, _2, _3, 
     boost::ref(graph), boost::ref(viewer), boost::ref(node_map)));
-  #endif
-  // Create problems definition from factory.
   
   auto data_range = problem_factory.create_range();
   set_range(data_range);
   // Simulate!
-  simulator.simulate(problem_factory, 1e5, 2);
+  simulator.simulate(problem_factory, 2e5, 2);
 }

@@ -103,8 +103,8 @@ namespace SimpleProblem {
 	};
 
 	struct SimpleProblemInitialParams {
-		param_type initial_params() {
-			return {1., 1.};
+		std::vector<param_type> initial_params() {
+			return {{1., 1.}, {1., 1.5}, {.57, 1.}, {1.43, 1.}};
 		}
 	};
 }
