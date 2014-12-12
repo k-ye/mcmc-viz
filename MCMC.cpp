@@ -30,26 +30,26 @@
 using namespace std;
 using namespace boost::math;
 
-// TODO: use morton code to avoid linear checking of each triangles
-// TODO: implement more examples and data
-// TODO: comparing with more methods like HMC or multipletiy
 // TODO: save demos, gif, youtube
+// TODO: parallel the process of update() using the index of each triangle
+// TODO: 
 
-// TODO: automate the numbers n_x, n_y in the grid adaptively or something
-// TODO: show traversals of the proposal points right above or below the posterior simulation
-// TODO: set the default view for viewer
-// TODO: have good visuals for comparing the prior to the posterior
+#define GRID_WIDTH 2.5
+#define GRID_HEIGHT 2.5
+#define TRAJECTORY_LENGTH 25
 
-// create code for stuff here
 struct TriangleToPoint;
 
 typedef ProblemFactory::size_type size_type;
 typedef ProblemFactory::value_type value_type;
 typedef ProblemFactory::param_type param_type;
+// The proposal type of the stats model
 typedef ProblemFactory::ProblemProposal ProblemProposal;
+// The posterior type of the stats model
 typedef ProblemFactory::ProblemPosterior ProblemPosterior;
 typedef ProblemFactory::ProblemRange ProblemRange;
 typedef ProblemFactory::ProblemInitialParams ProblemInitialParams;
+// Interval type
 typedef std::pair<value_type, value_type> interval;
 
 typedef Mesh<value_type, bool, value_type> MeshType;
@@ -59,28 +59,40 @@ typedef MeshType::Triangle Triangle;
 typedef std::map<Node, size_type> NodeMapType;
 // Define spatial searcher type
 typedef SpaceSearcher<Triangle, TriangleToPoint> SpaceSearcherType;
-
+// EventHandler type for MCMC iteration event.
 typedef boost::function<void (const std::vector<param_type>&, size_type, size_type)> MCMC_Iteration_Event;
 
+// controls the sleeping time between each MCMC Iteration
 value_type sleep_interval = 0.01;
+// controls the step to increase/decrease @a sleep_interval
 value_type sleep_step = .002;
-bool show_edge = true;
+// indicator to determine what to be shown in the label
 size_type show_label_state = 1;
+// indicator to determine if showing 3D surface/ 2D heatmap
 bool show_zaxis = false;
-
+// slope for range mapping between actual param and Mesh coordinate on X axis
 value_type range_x_slope = 0;
+// intercept for range mapping between actual param and Mesh coordinate on X axis
 value_type range_x_int = 0;
+// slope for range mapping between actual param and Mesh coordinate on Y axis
 value_type range_y_slope = 0;
+// intercept for range mapping between actual param and Mesh coordinate on Y axis
 value_type range_y_int = 0;
 
+/** Set up the mapping relationship between actual params and mesh coordinate.
+ * @param[in] range: object specifies a (probably approximated) range of the first two dimension of the params space
+ * @pre: @arange.x.first < @a range.x.second && @a range.y.first < @a range.y.second
+ */
 template <typename RANGE>
 void set_range(const RANGE& range) {
-  range_x_slope = 2./(range.x.second-range.x.first);
+  assert(range.x.first < range.x.second && range.y.first < range.y.second);
+  range_x_slope = GRID_WIDTH / (range.x.second-range.x.first);
   range_x_int = -range.x.first*range_x_slope;
-  range_y_slope = 2./(range.y.second-range.y.first);
+  range_y_slope = GRID_HEIGHT / (range.y.second-range.y.first);
   range_y_int = -range.y.first*range_y_slope;
 }
 
+/* Class to initialize a square mesh */
 class Grid {
 public:
   /** Returns a grid of the interval separated by the number of points.
@@ -117,28 +129,40 @@ public:
   }
 };
 
+/* Class to initialize trajectory for sampled points. */
 class Trajectory {
 public:
+  /*
+   * @param[in] length: length of the trajectory
+   */
   GraphType operator()(size_type length) {
     GraphType graph;
-    for (size_type i = 0; i < length; ++i) {
-      graph.add_node(Point(0, 0, 1.2));
-      if (i > 0) {
-        graph.add_edge(graph.node(graph.size()-1), graph.node(graph.size()-2));
+    size_type num_threads = omp_get_max_threads();
+
+    for (size_type i = 0; i < num_threads; ++i) {
+      for (size_type j = 0; j < length; ++j) {
+        graph.add_node(Point((value_type)j / 5., (value_type)i / 2., 1.2));
+        if (j > 0) {
+          graph.add_edge(graph.node(graph.size()-1), graph.node(graph.size()-2));
+        }
       }
     }
+    
     return graph;
   }
 };
 
+/** Calculate mapped value from true params to Mesh X-cooridnate */
 value_type map_x_grid_range(value_type x) {
   return range_x_slope * x + range_x_int;
 }
 
+/** Calculate mapped value from true params to Mesh Y-cooridnate */
 value_type map_y_grid_range(value_type y) {
   return range_y_slope * y + range_y_int;
 }
 
+/* Functor to determine whether a point is in a triangle. */
 class InTrianglePred {
   Point p0;
  public:
@@ -173,6 +197,7 @@ class InTrianglePred {
   }
 };
 
+/** Comparator to compare the value between @a n1 and @a n2. */
 struct NodeValueLessComparator {
   template <typename NODE>
   bool operator()(const NODE& n1, const NODE& n2) const {
@@ -194,7 +219,7 @@ struct NodePosition {
   double max_;
 };
 
-// A default color functor that returns white for anything it recieves
+/* A default color functor that returns colors according to the frequency. */
 struct HeatmapColor {
   template <typename NODE>
   CS207::Color operator()(const NODE& n) {
@@ -212,17 +237,28 @@ private:
   double max_;
 };
 
-struct TrajectoryColor
-{
+/** Default color functor to return colors according to how recent the point is
+  * in the trajectory.
+  */
+struct TrajectoryColor {
   template <typename NODE>
   CS207::Color operator()(const NODE& n) {
-    double val = n.value() / 25.;
-    return CS207::Color::make_heat(val);
+    switch((size_type)n.value()) {
+      case 0:
+        return CS207::Color::make_rgb(0., 199./255., 1.);
+      case 1:
+        return CS207::Color::make_rgb(0., 1., 0.);
+      case 2:
+        return CS207::Color::make_rgb(1., 0., 0.);
+      case 3:
+        return CS207::Color::make_rgb(1., 1., 0.);
+      default:
+        return CS207::Color::make_rgb(1., 1., 1.);
+    }
   }
 };
 
-/** Update the empirical probabilities at each triangle.
- */
+/* Update the empirical probabilities at each triangle. */
 template <typename ITER, typename PRED>
 void update(ITER begin, ITER end, size_type N, PRED pred) {
   (void) N;
@@ -234,16 +270,17 @@ void update(ITER begin, ITER end, size_type N, PRED pred) {
 }
 
 /** Update the empirical probabilities at each triangle.
- *  Deprecated as now we are utilizing SpaceSearcher.
- */
+  *  Deprecated as now we are utilizing SpaceSearcher.
+  */
 template <typename PRED>
 void update(MeshType& mesh, size_type N, PRED pred) {
   update(mesh.triangle_begin(), mesh.triangle_end(), N, pred);
 }
 
-/** Set each node's value to be the average of its adjacent triangles' empirical probabilities.
- */
+/* Function to apply to mesh after each iteration. */
 void post_process(MeshType& mesh) {
+  /** Set each node's value to be the average of its adjacent triangles' empirical
+    * probabilities. */
   size_type thread_id = omp_get_thread_num();
   size_type thread_num = omp_get_num_threads();
 
@@ -275,8 +312,6 @@ class MCMC_Simulator {
     * @param[in,out] mesh
     * @param[in,out] viewer
     */
-  //template <typename PROPOSAL, typename POSTERIOR>
-  //void simulate(PROPOSAL& proposal, const POSTERIOR& posterior,
   void simulate(const ProblemFactory::ProblemFactory& problem_factory, size_type max_N, size_type p) {
     size_type num_threads = omp_get_max_threads();
     // Initialize matrix of size max_N x p.
@@ -289,8 +324,6 @@ class MCMC_Simulator {
     
     for (size_type i = 0; i < num_threads; ++i) {
       theta[i*max_N] = initial_val[i];
-      //proposal[i] = problem_factory.create_proposal();
-      //posterior[i] = problem_factory.create_posterior();
     }
 
     std::default_random_engine generator;
@@ -330,18 +363,17 @@ class MCMC_Simulator {
     }
   }
 
-  /** Connect an event listener to the MCMC_Iteration event
-   */
+  /* Connect an event listener to the MCMC_Iteration event. */
   void add_mcmc_iteration_listener(const MCMC_Iteration_Event& func) {
     signals_.connect(func);
   }
 
 private:
-  /** Event listener containers
-   */
+  /* Event listener containers */
   boost::signals2::signal<void (const std::vector<param_type>&, size_type, size_type)> signals_;
 };
 
+/* Functor to map a triangle to a point for Morton Code. */
 struct TriangleToPoint {
   template <typename TRIANGLE>
   Point operator()(const TRIANGLE& tri) const {
@@ -354,40 +386,7 @@ struct TriangleToPoint {
   }
 };
 
-#if 0
-/** Callback function for each frame, in this case each iteration in MCMC step */
-void callback_distribution(const param_type& theta, size_type N, size_type accept_count, 
-  MeshType& mesh, CS207::SDLViewer& viewer, NodeMapType& node_map, SpaceSearcherType& space_searcher) {
-  // setup the bounding box for spacesearcher
-  Point bb_center(map_x_grid_range(theta[0]), map_y_grid_range(theta[1]), 0);
-  BoundingBox bb(bb_center-.05, bb_center+.05);
-  update(space_searcher.begin(bb), space_searcher.end(bb), N, InTrianglePred(theta));
-  #pragma omp parallel 
-  {
-    post_process(mesh);
-  }
-
-  auto max_node_it = std::max_element(mesh.node_begin(), mesh.node_end(), NodeValueLessComparator());
-  double max_val = (*max_node_it).value();
-
-  if (show_zaxis) {
-    viewer.add_nodes(mesh.node_begin(), mesh.node_end(),HeatmapColor(max_val), node_map);
-  } else {
-    viewer.add_nodes(mesh.node_begin(), mesh.node_end(),
-                   HeatmapColor(max_val), NodePosition(max_val), node_map);
-  }
-
-  if (show_label_state == 1) {
-    viewer.set_label(N);
-  } else if (show_label_state == 2) {
-    viewer.set_label(accept_count / (value_type)N * 100.0);
-  } else {
-    viewer.set_label("");
-  }
-  
-  CS207::sleep(sleep_interval);
-}
-#else
+/* Event handler of Mesh distribution display for MCMC_Iteration_Event */
 void callback_distribution(const std::vector<param_type>& theta, size_type N, size_type accept_count, 
   MeshType& mesh, CS207::SDLViewer& viewer, NodeMapType& node_map, SpaceSearcherType& space_searcher) {
   // setup the bounding box for spacesearcher
@@ -421,66 +420,74 @@ void callback_distribution(const std::vector<param_type>& theta, size_type N, si
   
   CS207::sleep(sleep_interval);
 }
-#endif
 
-/*
+/* Event handler of Graph trajectory display for MCMC_Iteration_Event */
 void callback_trajectory(const std::vector<param_type>& theta, size_type i, size_type accept_count, 
   GraphType& graph, CS207::SDLViewer& viewer, NodeMapType& node_map) {
-  //std::cout << "i: " << i << "; graph.size(): " << graph.size() << std::endl;
   (void) accept_count;
-  static std::vector<param_type> trajectory_vec;
   
-  // Force the tie conditional to be true if it is the first sample.
-  auto last_position = Point(theta[0]-1, theta[1]-1, 0);
-  if (i != 1) {
-    last_position = Point(trajectory_vec.back()[0], trajectory_vec.back()[1], 0);
-  }
-  // check tie condition, if it is true, new point was accepted and thus be added, else new point was rejected
-  if (std::tie(theta[0], theta[1]) != std::tie(last_position.x, last_position.y)) {
-    if (trajectory_vec.size() >= 25) { // Remove the 25th point before adding another.
-      trajectory_vec.erase(trajectory_vec.begin());
-    }
-    trajectory_vec.push_back(theta);
-  }
+  // Make a trajectory per core, which each runs its own MCMC.
+  size_type num_threads = omp_get_max_threads();
+  static std::vector<std::vector<param_type>> trajectory_vec_list(num_threads);
   
-  // Update trajectory
-  if (trajectory_vec.size() == 1) {
-    for (size_type k = 0; k < graph.num_nodes(); ++k) {
-      graph.node(k).position() = Point(map_x_grid_range(trajectory_vec[0][0]), map_y_grid_range(trajectory_vec[0][1]), 1);
-      graph.node(k).value() = (value_type)(k+1);
+  #pragma omp parallel 
+  {
+    size_type omp_id = omp_get_thread_num();
+  //for (size_type omp_id = 0; omp_id != num_threads; ++omp_id) {
+    param_type theta_omp_id = theta[omp_id];
+    std::vector<param_type>& trajectory_vec = trajectory_vec_list[omp_id];
+    
+    // Force the tie conditional to be true if it is the first sample.
+    auto last_position = Point(theta_omp_id[0]-1, theta_omp_id[1]-1, 0);
+    if (i != 1) {
+      last_position = Point(trajectory_vec.back()[0], trajectory_vec.back()[1], 0);
     }
-  } else {
-    for (size_type k = 0; k < trajectory_vec.size(); ++k) {
-      graph.node(k).position() = Point(map_x_grid_range(trajectory_vec[k][0]), map_y_grid_range(trajectory_vec[k][1]), 1);
-      graph.node(k).value() = (value_type)(k+1);
+    // Check tie condition; if it is true, new point was accepted and thus be added, 
+    // else new point was rejected.
+    if (std::tie(theta[omp_id][0], theta_omp_id[1]) != std::tie(last_position.x, last_position.y)) {
+      if (trajectory_vec.size() >= TRAJECTORY_LENGTH) {
+        // Pop out the first element after reaching the desired TRAJECTORY_LENGTH.
+        trajectory_vec.erase(trajectory_vec.begin());
+      }
+      trajectory_vec.push_back(theta_omp_id);
     }
+  
+    // Update trajectory.
+    size_type end = (trajectory_vec.size() == 1) ? TRAJECTORY_LENGTH : trajectory_vec.size();
+    for (size_type k = 0; k < end; ++k) {
+      size_type block_idx = omp_id * TRAJECTORY_LENGTH + k;
+      // Force all node positions to have the same position if there is only
+      // one point in the trajectory.
+      size_type temp = (trajectory_vec.size() == 1) ? 0 : k;
+      graph.node(block_idx).position() = Point(map_x_grid_range(trajectory_vec[temp][0]), map_y_grid_range(trajectory_vec[temp][1]), 1);
+      graph.node(block_idx).value() = omp_id;
+    }  
   }
-
   viewer.add_nodes(graph.node_begin(), graph.node_end(), TrajectoryColor(), node_map);
 }
-*/
 
-/** Callback function to handle keyboard events */
+/* Callback function to handle keyboard events */
 void callback_keyboard(SDLKey key) {
   switch(key) {
     case SDLK_DOWN:
-    // SLow down the MCMC sampling
+      // Slow down the procedure.
       sleep_interval += sleep_step;
       sleep_interval = sleep_interval > .05 ? .05 : sleep_interval;
       std::cout << "Framerate:" << sleep_interval << std::endl;
       break;
     case SDLK_UP:
-    // Speed up the MCMC sampling
+      // Speed up the procedure.
       sleep_interval -= sleep_step;
       sleep_interval = sleep_interval < 0. ? 0. : sleep_interval;
       std::cout << "Framerate:" << sleep_interval << std::endl;
       break;
     case SDLK_t:
-    // Switch between showing num_iterations, acceptance_ratio or nothing
+      // Cycle between displaying num_iterations, acceptance_ratio, or nothing.
       ++show_label_state;
       show_label_state = show_label_state % 3;
       break;
     case SDLK_f:
+      // Toggle display of the z-axis.
       show_zaxis = !show_zaxis;
       break;
     default:
@@ -489,14 +496,14 @@ void callback_keyboard(SDLKey key) {
 }
 
 int main() {
-  auto mesh = Grid()(std::make_pair(0., 2.), std::make_pair(0., 2.), 51, 51);
-  GraphType graph = Trajectory()(25);
-  // Print out the stats
+  auto mesh = Grid()(std::make_pair(0., GRID_WIDTH), std::make_pair(0., GRID_HEIGHT), 51, 51);
+  GraphType graph = Trajectory()(TRAJECTORY_LENGTH);
+  // Print out statistics of the mesh.
   std::cout << mesh.num_nodes() << " "
             << mesh.num_edges() << " "
             << mesh.num_triangles() << std::endl;
 
-  // Launch the SDLViewer
+  // Launch the SDLViewer.
   CS207::SDLViewer viewer;
   viewer.launch();
   
@@ -512,22 +519,20 @@ int main() {
   viewer.add_keyboard_listener(boost::bind(&callback_keyboard, _1));
   viewer.center_view();
   
-  // initialize MCMC simulator and problem set
+  // Initialize MCMC simulator and problem set.
   MCMC_Simulator simulator;
   ProblemFactory::ProblemFactory problem_factory;
   
   simulator.add_mcmc_iteration_listener(boost::bind(&callback_distribution, _1, _2, _3, 
     boost::ref(mesh), boost::ref(viewer), boost::ref(node_map), boost::ref(space_searcher)));
-  /*simulator.add_mcmc_iteration_listener(boost::bind(&callback_trajectory, _1, _2, _3, 
-    boost::ref(graph), boost::ref(viewer), boost::ref(node_map)));*/
-  // create problems definition from factory
+  #if 1
+  simulator.add_mcmc_iteration_listener(boost::bind(&callback_trajectory, _1, _2, _3, 
+    boost::ref(graph), boost::ref(viewer), boost::ref(node_map)));
+  #endif
+  // Create problems definition from factory.
   
-  //auto proposal = problem_factory.create_proposal();
-  //auto posterior = problem_factory.create_posterior();
-  //auto initial_params = problem_factory.create_initial_params();
   auto data_range = problem_factory.create_range();
   set_range(data_range);
-  // run the simulation
-  //simulator.simulate(proposal, posterior, initial_params, 5e5, 2);
+  // Simulate!
   simulator.simulate(problem_factory, 1e5, 2);
 }

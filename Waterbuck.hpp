@@ -54,14 +54,8 @@ namespace Waterbuck {
 		WaterbuckProposal() : N_generator_(RAND_GEN(ENG(), normal_rand_type(0., sqrt(5.)))), theta_generator_(RAND_GEN(ENG(), normal_rand_type(0., sqrt(0.01)))) {
 	  
 	  }
-	  //WaterbuckProposal() {
 
-	  //}
-
-	  param_type rand(const param_type theta, size_type) {
-	  	//auto N_generator = RAND_GEN(ENG(), normal_rand_type(0., sqrt(5.)));
-	  	//auto theta_generator = RAND_GEN(ENG(), normal_rand_type(0., sqrt(0.01)));
-
+	  param_type rand(const param_type& theta, size_type) {
 	    auto theta_sample = std::max(std::min(theta[1] + theta_generator_(), 1.), 0.);
 	    auto N_sample = std::max(std::round(theta[0] + N_generator_()), 72.);
 	    return {N_sample, theta_sample};
@@ -92,7 +86,7 @@ namespace Waterbuck {
 	  std::pair<value_type, value_type> x;
 	  std::pair<value_type, value_type> y;
 
-	  WaterbuckRange() : x(std::make_pair(70., 250.)), y(std::make_pair(0., 1.)) {
+	  WaterbuckRange() : x(std::make_pair(70., 400.)), y(std::make_pair(0., 1.)) {
 
 	  }
 	};
