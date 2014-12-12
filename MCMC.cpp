@@ -103,7 +103,7 @@ public:
 
     for (size_type i = 0; i < num_threads; ++i) {
       for (size_type j = 0; j < length; ++j) {
-        graph.add_node(0., 0., 1.2));
+        graph.add_node(Point(0., 0., 1.2));
         if (j > 0) {
           graph.add_edge(graph.node(graph.size()-1), graph.node(graph.size()-2));
         }
@@ -377,7 +377,7 @@ void callback_trajectory(const std::vector<param_type>& theta, size_type N, size
   viewer.add_nodes(graph.node_begin(), graph.node_end(), TrajectoryColor(), node_map);
 }
 
-/* Callback function to handle keyboard events */
+/* Callback function to handle keyboard events. */
 void callback_keyboard(SDLKey key) {
   switch(key) {
     case SDLK_DOWN:
