@@ -14,6 +14,8 @@ their state space.
 ### Features
 * Visualizes the empirical posterior distribution.
 * Visualizes the trajectory of the latest 25 sampled points.
+* Allows for implementing multiple Markov chains in parallel, and visualizes
+  individual trajectories for each Markov chain per core.
 * Supports user-defined sampling functions (proposal) and models (posterior).
 * Supports any number of parameters; for visualization, we project to the first
   two dimensions of the parameters.
