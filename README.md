@@ -9,7 +9,7 @@ mcmc-viz is a 3D visualization tool for examining [Markov chain Monte
 Carlo](http://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo) (MCMC) methods for
 parameter estimation of Bayesian models. It visualizes the performance of MCMC
 methods as they run in real time, and it provides insight into the geometry of
-their state space.
+their state space. Source code can be found on [GitHub](https://github.com/k-ye/mcmc-viz).
 
 ### Features
 * Visualizes the empirical posterior distribution.
@@ -52,7 +52,12 @@ nonexistent posterior modes peaking all across the surface.
 ![](img/waterbuck_2.gif)
 ![](img/waterbuck_3.gif)
 
+A video for this process can be found on YouTube.
+[![](http://img.youtube.com/vi/MYGW0ny8uJ8/0.jpg)](https://www.youtube.com/watch?v=MYGW0ny8uJ8))
+
 ## Getting Started
+To use your own model, you may want to compile the `MCMC.cpp` file first.
+
 ```
 make MCMC
 ./MCMC
