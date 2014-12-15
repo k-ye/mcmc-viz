@@ -49,6 +49,7 @@ regions, and while it does traverse the entire parameter space, it finds
 nonexistent posterior modes peaking all across the surface.
 
 ![](img/waterbuck_1.gif)
+![](img/waterbuck_2.gif)
 ![](img/waterbuck_3.gif)
 
 ## Getting Started
