@@ -17,7 +17,8 @@
 #include "mesh/Mesh.hpp"
 #include "Grid.hpp"
 #include "SpaceSearcher.hpp"
-#include "MCMC_Simulator.hpp"
+//#include "MCMC_Simulator.hpp"
+#include "HMC_Simulator.hpp"
 
 #include <boost/bind/bind.hpp>
 #include <boost/ref.hpp>
@@ -36,6 +37,7 @@ using namespace boost::math;
 
 struct TriangleToPoint;
 
+#if 0
 typedef ProblemFactory::size_type size_type;
 typedef ProblemFactory::value_type value_type;
 typedef ProblemFactory::param_type param_type;
@@ -45,6 +47,17 @@ typedef ProblemFactory::ProblemProposal ProblemProposal;
 typedef ProblemFactory::ProblemPosterior ProblemPosterior;
 typedef ProblemFactory::ProblemRange ProblemRange;
 typedef ProblemFactory::ProblemInitialParams ProblemInitialParams;
+#else
+typedef HMCProblemFactory::size_type size_type;
+typedef HMCProblemFactory::value_type value_type;
+typedef HMCProblemFactory::param_type param_type;
+// The proposal type of the stats model
+typedef HMCProblemFactory::ProblemProposal ProblemProposal;
+// The posterior type of the stats model
+//typedef HMCProblemFactory::ProblemPosterior ProblemPosterior;
+typedef HMCProblemFactory::ProblemRange ProblemRange;
+typedef HMCProblemFactory::ProblemInitialParams ProblemInitialParams;
+#endif
 // Interval type
 typedef std::pair<value_type, value_type> interval;
 
@@ -56,7 +69,8 @@ typedef std::map<Node, size_type> NodeMapType;
 // Define spatial searcher type
 typedef SpaceSearcher<Triangle, TriangleToPoint> SpaceSearcherType;
 // EventHandler type for MCMC iteration event.
-typedef MCMC_Simulator::MCMC_Iteration_Event MCMC_Iteration_Event;
+//typedef MCMC_Simulator::MCMC_Iteration_Event MCMC_Iteration_Event;
+typedef HMC_Simulator::HMC_Iteration_Event MCMC_Iteration_Event;
 
 // Controls the sleeping time between each MCMC Iteration
 value_type sleep_interval = 0.01;
@@ -433,9 +447,11 @@ int main() {
   viewer.center_view();
   
   // Initialize MCMC simulator and problem set.
-  MCMC_Simulator simulator;
+  //MCMC_Simulator simulator;
+  HMC_Simulator simulator;
   // Create problem factory
-  ProblemFactory::ProblemFactory problem_factory;
+  //ProblemFactory::ProblemFactory problem_factory;
+  HMCProblemFactory problem_factory;
   
   // register distribution visualization event hanlder
   simulator.add_mcmc_iteration_listener(boost::bind(&callback_distribution, _1, _2, _3, 

@@ -9,7 +9,7 @@
 #include <boost/random/normal_distribution.hpp>
 
 namespace HMCModel {
-	#define MOMT_VAR 3.
+	#define MOMT_VAR .5
 	class HMCModelProposal;
 	struct HMCModelRange;
 	struct HMCModelInitialParams;
@@ -30,7 +30,7 @@ namespace HMCModel {
 		// Random number generator type.
 		typedef boost::variate_generator<ENG, normal_rand_type> RAND_GEN;
 	public:
-		HMCModelProposal() : delta_(.05), L_(50),
+		HMCModelProposal() : delta_(.02), L_(50),
 		momt_generator_(RAND_GEN(ENG(), normal_rand_type(0., MOMT_VAR))) {
 			
 		}
@@ -99,11 +99,6 @@ namespace HMCModel {
 			for (size_type i = 0; i < momt.size(); ++i) {
 				momt[i] -= 0.5 * delta_ * U_deriv[i];
 			}
-
-			//std::cout << "pos_x: " << pos[0] << ", pos_y: " << pos[1] << std::endl;
-			//std::cout << "momt_x: " << momt[0] << ", momt_y: " << momt[1] << std::endl;
-			//std::cout << "H energy: " << H_energy(pos, momt, false) << std::endl;
-			std::cout << std::endl;
 		}
 
 		// time step
