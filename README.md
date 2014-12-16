@@ -56,6 +56,7 @@ A video for this process can be found on YouTube.
 
 ## Getting Started
 To download the repository:
+```
 git clone --recursive https://github.com/k-ye/mcmc-viz.git
 ```
 
