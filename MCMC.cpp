@@ -289,7 +289,7 @@ struct TriangleToPoint {
   *        else show acceptance ratio, if @a show_label_state == 2,
   *        else shut off display.
   *
-  * Time Complexity: O(@a mesh.num_nodes())
+  * Time Complexity: O(@a mesh.num_nodes() + @a mesh.num_triangles())
   */
 void callback_distribution(const std::vector<param_type>& theta, size_type N, size_type accept_count, 
   MeshType& mesh, CS207::SDLViewer& viewer, NodeMapType& node_map, SpaceSearcherType& space_searcher) {

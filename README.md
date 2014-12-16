@@ -50,7 +50,6 @@ nonexistent posterior modes peaking all across the surface.
 
 ![](img/waterbuck_1.gif)
 ![](img/waterbuck_2.gif)
-![](img/waterbuck_3.gif)
 
 A video for this process can be found on YouTube.
 [![](http://img.youtube.com/vi/MYGW0ny8uJ8/0.jpg)](https://www.youtube.com/watch?v=MYGW0ny8uJ8))
