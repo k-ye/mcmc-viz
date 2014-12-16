@@ -2,6 +2,6 @@
 #include <random>
 #include <vector>
 
-namespace HMCData {
-	
+namespace HMCModel {
+
 }
