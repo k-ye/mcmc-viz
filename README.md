@@ -55,6 +55,10 @@ A video for this process can be found on YouTube.
 [![](http://img.youtube.com/vi/MYGW0ny8uJ8/0.jpg)](https://www.youtube.com/watch?v=MYGW0ny8uJ8))
 
 ## Getting Started
+To download the repository:
+git clone --recursive https://github.com/k-ye/mcmc-viz.git
+```
+
 To use your own model, you may want to compile the `MCMC.cpp` file first.
 
 ```
