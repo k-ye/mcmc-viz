@@ -73,9 +73,10 @@ namespace Waterbuck {
 		// Random number generator type.
 		typedef boost::variate_generator<ENG, normal_rand_type> RAND_GEN;
 	 public:
-		WaterbuckProposal() : N_generator_(RAND_GEN(ENG(), normal_rand_type(0., sqrt(5.)))), theta_generator_(RAND_GEN(ENG(), normal_rand_type(0., sqrt(0.01)))) {
-	  
-	  }
+		WaterbuckProposal() : N_generator_(RAND_GEN(ENG(), normal_rand_type(0., sqrt(5.)))), 
+		theta_generator_(RAND_GEN(ENG(), normal_rand_type(0., sqrt(0.01)))) {
+			
+		}
 
 	  /** Function to propose a random parameter that is of dimension @a prev_param.size().
       * @param[in] prev_param: the previous parameter in the MCMC chain
