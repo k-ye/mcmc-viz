@@ -9,31 +9,18 @@
 #include <boost/random/normal_distribution.hpp>
 
 namespace HMCModel {
+	#define MOMT_VAR 3.
 	class HMCModelProposal;
-	class HMCModelPosterior;
 	class HMCModelRange;
 	class HMCModelInitialParames;
 
 	typedef HMCModelProposal ProblemProposal;
-	typedef HMCModelPosterior ProblemPosterior;
 	typedef HMCModelRange ProblemRange;
 	typedef HMCModelInitialParames ProblemInitialParams;
 
 	typedef double value_type;
 	typedef unsigned size_type;
 	typedef std::vector<value_type> param_type;
-
-	class HMCModelPosterior {
-	public:
-		// p(x,y) = 1 - x^2 - y^2
-		value_type operator()(const param_type& theta_, bool log_) const {
-			double den = 1 - pow(theta_[0], 2) - pow(theta_[1], 2);
-			return log_ ? log(den) : den;
-		}
-
-	private:
-		friend class HMCModelProposal;
-	};
 
 	class HMCModelProposal {
 		// Engine type to generate random numbers
@@ -45,9 +32,14 @@ namespace HMCModel {
 		// Random number generator type.
 		typedef boost::variate_generator<ENG, normal_rand_type> RAND_GEN;
 	public:
-		HMCModelProposal() : delta_(.02), L_(40),
-		momt_generator_(RAND_GEN(ENG(), normal_rand_type(0., 2.))) {
+		HMCModelProposal() : delta_(.05), L_(50),
+		momt_generator_(RAND_GEN(ENG(), normal_rand_type(0., MOMT_VAR))) {
 			
+		}
+
+		value_type posterior(const param_type& theta_, bool log_) const {
+			double den = 1 - pow(theta_[0], 2) - pow(theta_[1], 2);
+			return log_ ? log(den) : den;
 		}
 
 		param_type rand(const param_type& pos, size_type) {
@@ -69,19 +61,27 @@ namespace HMCModel {
 		param_type U_derivative(const param_type& pos) const {
 			param_type deriv(2);
 			// dU/dx = -2x
-			deriv[0] = -2 * pos[0];
+			deriv[0] = 2 * pos[0] / posterior(pos, false);
 			// dU/dy = -2y
-			deriv[1] = -2 * pos[1];
+			deriv[1] = 2 * pos[1] / posterior(pos, false);
 			return deriv;
 		}
 
 		param_type K_derivative(const param_type& momt) const {
 			param_type deriv(2);
 			// dK/dp_x = p_x / sigma_x^2
-			deriv[0] = momt[0] / 2.;
+			deriv[0] = momt[0] / MOMT_VAR;
 			// dK/dp_y = p_y / sigma_y^2
-			deriv[1] = momt[1] / 2.;
+			deriv[1] = momt[1] / MOMT_VAR;
 			return deriv;
+		}
+
+		value_type H_Energy(const param_type& pos, const param_type& momt) const {
+			value_type energy = -log(posterior(pos, false));
+			for (value_type m : momt) {
+				energy += 0.5 * pow(m, 2) / MOMT_VAR;
+			}
+			return energy;
 		}
 
 		// Update @a pos and @a momt
@@ -104,6 +104,7 @@ namespace HMCModel {
 
 			std::cout << "pos_x: " << pos[0] << ", pos_y: " << pos[1] << std::endl;
 			std::cout << "momt_x: " << momt[0] << ", momt_y: " << momt[1] << std::endl;
+			std::cout << "H energy: " << H_Energy(pos, momt) << std::endl;
 			std::cout << std::endl;
 		}
 
