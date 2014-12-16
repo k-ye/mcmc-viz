@@ -11,12 +11,12 @@
 namespace HMCModel {
 	#define MOMT_VAR 3.
 	class HMCModelProposal;
-	class HMCModelRange;
-	class HMCModelInitialParames;
+	struct HMCModelRange;
+	struct HMCModelInitialParams;
 
 	typedef HMCModelProposal ProblemProposal;
 	typedef HMCModelRange ProblemRange;
-	typedef HMCModelInitialParames ProblemInitialParams;
+	typedef HMCModelInitialParams ProblemInitialParams;
 
 	typedef double value_type;
 	typedef unsigned size_type;
@@ -25,8 +25,6 @@ namespace HMCModel {
 	class HMCModelProposal {
 		// Engine type to generate random numbers
 		typedef boost::mt19937 ENG;
-		// Distribution type to be used by pdf() in boost.
-		typedef boost::math::normal_distribution<value_type> normal_dens_type;
 		// Distribution type to generate random numbers.
 		typedef boost::normal_distribution<value_type> normal_rand_type;
 		// Random number generator type.
@@ -42,7 +40,7 @@ namespace HMCModel {
 			return log_ ? log(den) : den;
 		}
 
-		param_type rand(const param_type& pos, size_type) {
+		std::vector<param_type> rand(const param_type& pos, size_type) {
 			// start from previous position
 			param_type proposed_pos = pos;
 			// random sample a new momentum to perturb
@@ -54,7 +52,15 @@ namespace HMCModel {
 				leap_frog(proposed_pos, proposed_momt);
 			}
 
-			return proposed_pos;
+			return {proposed_pos, proposed_momt};
+		}
+
+		value_type H_energy(const param_type& pos, const param_type& momt, bool log_) const {
+			value_type energy = -log(posterior(pos, false));
+			for (value_type m : momt) {
+				energy += 0.5 * pow(m, 2) / MOMT_VAR;
+			}
+			return log_ ? log(energy) : energy;
 		}
 
 	private:
@@ -76,14 +82,6 @@ namespace HMCModel {
 			return deriv;
 		}
 
-		value_type H_Energy(const param_type& pos, const param_type& momt) const {
-			value_type energy = -log(posterior(pos, false));
-			for (value_type m : momt) {
-				energy += 0.5 * pow(m, 2) / MOMT_VAR;
-			}
-			return energy;
-		}
-
 		// Update @a pos and @a momt
 		void leap_frog(param_type& pos, param_type& momt) const {
 			// 1. THe first 0.5 delta leap for momentum:
@@ -102,9 +100,9 @@ namespace HMCModel {
 				momt[i] -= 0.5 * delta_ * U_deriv[i];
 			}
 
-			std::cout << "pos_x: " << pos[0] << ", pos_y: " << pos[1] << std::endl;
-			std::cout << "momt_x: " << momt[0] << ", momt_y: " << momt[1] << std::endl;
-			std::cout << "H energy: " << H_Energy(pos, momt) << std::endl;
+			//std::cout << "pos_x: " << pos[0] << ", pos_y: " << pos[1] << std::endl;
+			//std::cout << "momt_x: " << momt[0] << ", momt_y: " << momt[1] << std::endl;
+			//std::cout << "H energy: " << H_energy(pos, momt, false) << std::endl;
 			std::cout << std::endl;
 		}
 
@@ -113,5 +111,25 @@ namespace HMCModel {
 		// times to do leap frog
 	  size_type L_;
 	  RAND_GEN momt_generator_;
+	};
+
+	struct HMCModelRange {
+		// Range of parameter N, [@a x.first, @a x.second]
+	  std::pair<value_type, value_type> x;
+	  // Range of parameter theta, [@a x.first, @a x.second]
+	  std::pair<value_type, value_type> y;
+
+	  HMCModelRange() : x(std::make_pair(-2., 2.)), y(std::make_pair(-2., 2.)) {
+
+	  }
+	};
+
+	struct HMCModelInitialParams {
+
+		/* Make some guess of the initial parameters */
+		std::vector<std::vector<param_type>> initial_params() {
+			return {{{.5, .5}, {.2, .4}, {.5, -.3}, {-.4, .2}}, 
+					{{.6, -.2}, {.5, .5}, {-.4, .6}, {.0, -.2}}};
+		}
 	};
 }
