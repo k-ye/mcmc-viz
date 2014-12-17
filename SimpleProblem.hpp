@@ -1,3 +1,6 @@
+#ifndef SIMPLEPROBLEM_H
+#define SIMPLEPROBLEM_H
+
 #include <fstream>
 #include <cmath>
 #include <random>
@@ -108,3 +111,5 @@ namespace SimpleProblem {
 		}
 	};
 }
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef PROBLEMFACTORY_H
+#define PROBLEMFACTORY_H
+
 #include "Waterbuck.hpp"
 #include "SimpleProblem.hpp"
 #include "vector"
@@ -44,3 +47,5 @@ namespace ProblemFactory {
 		}
 	};
 }
+
+#endif

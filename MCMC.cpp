@@ -18,6 +18,7 @@
 #include "Grid.hpp"
 #include "SpaceSearcher.hpp"
 #include "MCMC_Simulator.hpp"
+#include "ProblemFactory.hpp"
 
 #include <boost/bind/bind.hpp>
 #include <boost/ref.hpp>

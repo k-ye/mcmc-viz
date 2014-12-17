@@ -1,3 +1,6 @@
+#ifndef WATERBUCK_H
+#define WATERBUCK_H
+
 #include <fstream>
 #include <cmath>
 #include <random>
@@ -133,3 +136,5 @@ namespace Waterbuck {
 		}
 	};
 }
+
+#endif

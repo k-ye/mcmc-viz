@@ -1,3 +1,6 @@
+#ifndef MCMC_SIMULATOR_H
+#define MCMC_SIMULATOR_H
+
 #include <vector>
 #include <boost/signals2/signal.hpp>
 #include <boost/function.hpp>
@@ -86,3 +89,5 @@ private:
   /* Event listener containers */
   boost::signals2::signal<void (const std::vector<param_type>&, size_type, size_type)> signals_;
 };
+
+#endif
